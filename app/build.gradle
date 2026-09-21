@@ -1,0 +1,36 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+}
+
+// CF Access service-token creds live in local.properties (gitignored), never in the repo.
+def props = new Properties()
+def lp = rootProject.file('local.properties')
+if (lp.exists()) lp.withInputStream { props.load(it) }
+
+android {
+    namespace 'org.crolab.chromescribe'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'org.crolab.chromescribe'
+        minSdk 24
+        targetSdk 34
+        versionCode 1
+        versionName '1.0'
+        buildConfigField 'String', 'API', "\"${props.getProperty('cs.api', 'https://chromescribe-dashboard.ancient-glitter-9ac9.workers.dev')}\""
+        buildConfigField 'String', 'CF_ID', "\"${props.getProperty('cs.cfId', '')}\""
+        buildConfigField 'String', 'CF_SECRET', "\"${props.getProperty('cs.cfSecret', '')}\""
+    }
+
+    buildFeatures { buildConfig true }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions { jvmTarget = '17' }
+}
+
+dependencies {
+    implementation 'com.squareup.okhttp3:okhttp:4.12.0'
+}

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5">
+<style>
+  :root { color-scheme: dark; }
+  body {
+    background: #0a0a0a; color: #ededed; margin: 0; padding: 16px 18px 48px;
+    font: 17px/1.65 -apple-system, "Segoe UI", Roboto, sans-serif;
+    -webkit-text-size-adjust: 100%;
+  }
+  h2 { font-size: 21px; margin: 28px 0 10px; color: #fff; }
+  h3 { font-size: 18px; margin: 22px 0 8px; color: #d4d4d4; }
+  p { margin: 0 0 14px; }
+  a { color: #7aa2ff; overflow-wrap: anywhere; }
+  code { background: #1c1c1c; padding: 2px 5px; border-radius: 4px; font-size: 15px; }
+  blockquote { border-left: 3px solid #333; margin: 14px 0; padding: 2px 0 2px 14px; color: #a0a0a0; }
+  hr { border: 0; border-top: 1px solid #262626; margin: 26px 0; }
+  ul, ol { padding-left: 22px; margin: 0 0 14px; }
+  li { margin-bottom: 7px; }
+  details { margin-top: 20px; border-top: 1px solid #262626; padding-top: 14px; }
+  summary { cursor: pointer; color: #a0a0a0; padding: 8px 0; }
+</style>
+</head>
+<body>
+<div id="content"></div>
+<script>
+  const markdown = __MARKDOWN__;
+
+  // Same renderer as the dashboard's transcript.html — keep the two in step.
+  function parseMarkdown(text) {
+    const urlRegex = /(https?:\/\/[^\s<>"'{}|\\^`\[\]]+)/g;
+    text = text.replace(urlRegex, '<a href="$1">$1</a>');
+
+    return text
+      .replace(/^# .+$/gm, '')
+      .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+      .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.+?)\*/g, '<em>$1</em>')
+      .replace(/`(.+?)`/g, '<code>$1</code>')
+      .replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>')
+      .replace(/^---$/gm, '<hr>')
+      .replace(/^[ \t]*- .+(?:\r?\n(?:[ \t]*\r?\n)*[ \t]*- .+)*/gm, block =>
+        '<ul>' + block.split(/\r?\n/).filter(line => line.trim())
+          .map(line => '<li>' + line.replace(/^[ \t]*- /, '') + '</li>').join('') + '</ul>')
+      .replace(/^[ \t]*\d+\. .+(?:\r?\n(?:[ \t]*\r?\n)*[ \t]*\d+\. .+)*/gm, block =>
+        '<ol start="' + parseInt(block, 10) + '">' + block.split(/\r?\n/).filter(line => line.trim())
+          .map(line => '<li>' + line.replace(/^[ \t]*\d+\. /, '') + '</li>').join('') + '</ol>')
+      .replace(/\n\n/g, '</p><p>')
+      .replace(/^(?!<[houpbld])(.+)$/gm, '<p>$1</p>')
+      .replace(/<p><\/p>/g, '');
+  }
+
+  document.getElementById('content').innerHTML = parseMarkdown(markdown);
+</script>
+</body>
+</html>
