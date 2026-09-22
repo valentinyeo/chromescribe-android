@@ -2,49 +2,50 @@ package org.crolab.chromescribe
 
 import android.app.Activity
 import android.os.Bundle
+import android.webkit.WebSettings
 import android.webkit.WebView
 import android.widget.Toast
-import org.json.JSONObject
+import java.io.File
 
 /**
- * Renders one transcript's markdown. Reads the cached copy first so it works
- * with no signal; only falls back to the network when nothing is cached.
+ * Offline reader. Renders a cached markdown snapshot through the safe native
+ * renderer. JavaScript, file/content access and all network loads are disabled,
+ * so a transcript can never phone home or inject markup.
  */
 class ReadActivity : Activity() {
 
-    private lateinit var web: WebView
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        web = WebView(this)
-        web.settings.javaScriptEnabled = true
-        setContentView(web)
 
         val id = intent.getStringExtra("id") ?: return finish()
-        title = intent.getStringExtra("title") ?: "Transcript"
-
-        val file = Api.contentFile(this, id)
-        if (file.exists()) {
-            show(file.readText())
-        } else {
-            Thread {
-                try {
-                    val md = Api.get("/api/transcript/$id/content")
-                    file.writeText(md)
-                    runOnUiThread { show(md) }
-                } catch (e: Exception) {
-                    runOnUiThread {
-                        Toast.makeText(this, "Not cached and offline", Toast.LENGTH_LONG).show()
-                        finish()
-                    }
-                }
-            }.start()
+        val cache = TranscriptStore(File(filesDir, "cache"))
+        val markdown = cache.content(id)
+        if (markdown == null) {
+            Toast.makeText(this, R.string.toast_not_saved, Toast.LENGTH_LONG).show()
+            finish()
+            return
         }
-    }
+        title = intent.getStringExtra("title")
+            ?: cache.index().firstOrNull { it.id == id }?.title
+            ?: getString(R.string.title_transcript)
 
-    private fun show(markdown: String) {
+        val web = WebView(applicationContext)
+        val s = web.settings
+        s.javaScriptEnabled = false
+        s.blockNetworkLoads = true
+        s.allowFileAccess = false
+        s.allowContentAccess = false
+        s.allowFileAccessFromFileURLs = false
+        s.allowUniversalAccessFromFileURLs = false
+        s.mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
+        s.cacheMode = WebSettings.LOAD_NO_CACHE
+
         val template = assets.open("reader.html").bufferedReader().use { it.readText() }
-        val html = template.replace("__MARKDOWN__", JSONObject.quote(markdown))
-        web.loadDataWithBaseURL("file:///android_asset/", html, "text/html", "utf-8", null)
+        val html = template.replace("__CONTENT__", MarkdownRenderer.render(markdown))
+        // Fixed non-null HTTPS base: a null base truncates inline HTML containing
+        // '#' on Android Q, which made the reader blank. blockNetworkLoads=true
+        // means the base is an origin only, never fetched.
+        web.loadDataWithBaseURL("https://offline.chromescribe.invalid/", html, "text/html", "utf-8", null)
+        setContentView(web)
     }
 }

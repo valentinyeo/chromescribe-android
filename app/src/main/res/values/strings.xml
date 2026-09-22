@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ChromeScribe</string>
+
+    <string name="btn_website">Website</string>
+    <string name="btn_saved">Saved</string>
+    <string name="btn_sync">Sync</string>
+    <string name="btn_overflow">⋮</string>
+    <string name="menu_sync">Sync latest 20</string>
+    <string name="menu_save">Save current</string>
+    <string name="menu_retry">Retry shares</string>
+    <string name="btn_add">Add</string>
+    <string name="btn_cancel">Cancel</string>
+    <string name="btn_remove">Remove</string>
+
+    <string name="status_ready">Ready</string>
+    <string name="status_no_share_link">No valid YouTube link in that share</string>
+    <string name="status_invalid_link">Not a valid YouTube link</string>
+    <string name="status_saved_offline">Saved offline — sends when ChromeScribe is online</string>
+    <string name="status_save_failed">Could not save submission: %1$s</string>
+    <string name="status_outbox_unreadable">Outbox unreadable: %1$s</string>
+    <string name="status_queued">Queued for transcription</string>
+    <string name="status_already_transcribed">Already transcribed — opening it</string>
+    <string name="status_already_queued">Already queued</string>
+    <string name="status_sign_in_retry">Sign in on Website, then retry</string>
+    <string name="status_offline_retry">Offline — will send when online</string>
+    <string name="status_syncing">Syncing…</string>
+    <string name="status_sign_in_sync">Sign in to ChromeScribe, then Sync again</string>
+    <string name="status_saving">Saving…</string>
+    <string name="status_retrying">Retrying shares…</string>
+    <string name="status_server_error">Server error %1$d — kept in queue</string>
+    <string name="status_nothing_to_save">Open a transcript first to save it</string>
+    <string name="status_background_failed">Something went wrong — try again</string>
+    <string name="status_outbox_error">Storage error — queued links kept</string>
+    <string name="status_saved">Saved offline</string>
+    <string name="status_save_online_only">Could not save — still online only</string>
+    <plurals name="status_waiting">
+        <item quantity="one">%1$d submission waiting — sends when online</item>
+        <item quantity="other">%1$d submissions waiting — sends when online</item>
+    </plurals>
+    <string name="status_offline_library">Offline — showing saved library</string>
+
+    <string name="dialog_add_title">Add YouTube link</string>
+    <string name="dialog_remove_message">Remove \u201c%1$s\u201d from offline library?</string>
+    <string name="toast_cannot_open">Cannot open link</string>
+    <string name="toast_not_saved">Not saved offline</string>
+
+    <plurals name="saved_count">
+        <item quantity="one">%1$d saved offline</item>
+        <item quantity="other">%1$d saved offline</item>
+    </plurals>
+    <plurals name="saved_count_synced">
+        <item quantity="one">%1$d saved offline · %2$s</item>
+        <item quantity="other">%1$d saved offline · %2$s</item>
+    </plurals>
+    <string name="title_transcript">Transcript</string>
+</resources>

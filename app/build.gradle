@@ -3,7 +3,8 @@ plugins {
     id 'org.jetbrains.kotlin.android'
 }
 
-// CF Access service-token creds live in local.properties (gitignored), never in the repo.
+// Optional local override for the dashboard base URL. No secrets live here:
+// login happens in the WebView and native calls reuse its scoped cookies.
 def props = new Properties()
 def lp = rootProject.file('local.properties')
 if (lp.exists()) lp.withInputStream { props.load(it) }
@@ -16,11 +17,10 @@ android {
         applicationId 'org.crolab.chromescribe'
         minSdk 24
         targetSdk 34
-        versionCode 1
-        versionName '1.0'
-        buildConfigField 'String', 'API', "\"${props.getProperty('cs.api', 'https://chromescribe-dashboard.ancient-glitter-9ac9.workers.dev')}\""
-        buildConfigField 'String', 'CF_ID', "\"${props.getProperty('cs.cfId', '')}\""
-        buildConfigField 'String', 'CF_SECRET', "\"${props.getProperty('cs.cfSecret', '')}\""
+        versionCode 2
+        versionName '1.1.0'
+        buildConfigField 'String', 'WEB_BASE',
+            "\"${props.getProperty('cs.base', 'https://chromescribe-dashboard.ancient-glitter-9ac9.workers.dev')}\""
     }
 
     buildFeatures { buildConfig true }
@@ -29,8 +29,19 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
     kotlinOptions { jvmTarget = '17' }
+
+    buildTypes {
+        release {
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            // Unsigned unless a local signingConfig is supplied by the parent.
+        }
+    }
 }
 
 dependencies {
-    implementation 'com.squareup.okhttp3:okhttp:4.12.0'
+    testImplementation 'junit:junit:4.13.2'
+    // Real org.json for pure-JVM parsing tests (android.jar only has stubs).
+    testImplementation 'org.json:json:20231013'
 }
