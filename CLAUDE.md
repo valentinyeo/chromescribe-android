@@ -52,5 +52,6 @@ is behind Cloudflare Access email OTP, so only the WebView can hold the login.
   and adjust after a signed-in device pass.
 - Android 10 runtime pass confirmed cached transcript text with both network
   transports disabled, saved-library persistence and durable ACTION_SEND.
-- Production queue deployment, interactive OTP, and physical-device layout
-  remain unverified. Do not claim end-to-end transcription until deployed.
+- Production queue deployed on 2026-09-22. API submission produced transcript
+  3359 and summary. Interactive OTP, full phone share-sheet flow, and physical
+  device layout remain unverified.

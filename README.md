@@ -66,9 +66,10 @@ disabled, saved-library persistence after restart, and durable ACTION_SEND
 queueing. The software emulator showed font-rendering artifacts. Physical-device
 layout and the interactive email OTP flow remain unverified.
 
-The production queue endpoint still needs the prepared backend deployment.
-Until deployed, new shares remain safely in the local outbox. End-to-end
-share-to-transcription verification is pending this deployment.
+The production queue backend was deployed on 2026-09-22. A live API submission
+produced transcript 3359 and its summary. Duplicate submissions reuse the queue
+entry; previously transcribed videos return their existing transcript.
+Full phone share-sheet and interactive login verification remain pending.
 
 ## Build / test
 
