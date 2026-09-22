@@ -3,7 +3,6 @@ package org.crolab.chromescribe
 import android.content.Context
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
-import android.content.pm.Signature
 import android.os.Build
 import java.io.File
 import java.security.MessageDigest
@@ -50,10 +49,9 @@ object ApkVerifier {
         if (minSdk > Build.VERSION.SDK_INT) throw UpdateException("apk requires newer Android")
         if (manifest.minSdk != minSdk) throw UpdateException("apk minSdk mismatch")
 
-        val archiveSigners = signerDigests(archive)
+        val archiveSigners = archiveSignerDigests(pm, apk)
         val installedSigners = installedSignerDigests(ctx)
-        if (archiveSigners.isEmpty() || installedSigners.isEmpty()) throw UpdateException("no signatures")
-        if (archiveSigners != installedSigners) throw UpdateException("signer mismatch")
+        SignerPolicy.requireMatch(archiveSigners, installedSigners)
 
         return Verified(archiveCode, archive.versionName.orEmpty())
     }
@@ -69,31 +67,93 @@ object ApkVerifier {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) info.longVersionCode
         else info.versionCode.toLong()
 
-    /** SHA-256 digests of every signer certificate, sorted, so sets compare. */
-    private fun signerDigests(info: PackageInfo): List<String> {
-        val sigs: Array<Signature> = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            val si = info.signingInfo ?: return emptyList()
-            if (si.hasMultipleSigners()) si.apkContentsSigners else si.signingCertificateHistory
-        } else {
-            @Suppress("DEPRECATION") info.signatures ?: return emptyList()
+    /**
+     * SHA-256 digests of the archive's *current* signer certificates.
+     *
+     * On API 28+ we read `SigningInfo.getApkContentsSigners` (the signers
+     * actually in the APK), matching how the installed package's current
+     * signers are read — we require the same current signer, not
+     * rotation-history equality. `getPackageArchiveInfo` does not reliably
+     * populate `signingInfo` for a file (observed on Android 10/API 29), so
+     * when it is missing/empty we fall back to the legacy `signatures` field,
+     * fetched with GET_SIGNATURES.
+     */
+    private fun archiveSignerDigests(pm: PackageManager, apk: File): List<String> {
+        val info = try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                pm.getPackageArchiveInfo(apk.absolutePath, PackageManager.GET_SIGNING_CERTIFICATES)
+            } else {
+                @Suppress("DEPRECATION")
+                pm.getPackageArchiveInfo(apk.absolutePath, PackageManager.GET_SIGNATURES)
+            }
+        } catch (e: Exception) {
+            null
         }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            val modern = info?.let { currentSignerDigests(it) }.orEmpty()
+            if (modern.isNotEmpty()) return modern
+            @Suppress("DEPRECATION")
+            val legacyInfo = try {
+                pm.getPackageArchiveInfo(apk.absolutePath, PackageManager.GET_SIGNATURES)
+            } catch (e: Exception) {
+                null
+            }
+            return legacySignatureDigests(legacyInfo)
+        }
+        return legacySignatureDigests(info)
+    }
+
+    /** Current APK signers from modern signing info, or empty if unavailable. */
+    private fun currentSignerDigests(info: PackageInfo): List<String> {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) return emptyList()
+        val si = info.signingInfo ?: return emptyList()
+        val sigs = si.apkContentsSigners
+        if (sigs == null || sigs.isEmpty()) return emptyList()
+        return sigs.map { sha256(it.toByteArray()) }.sorted()
+    }
+
+    @Suppress("DEPRECATION")
+    private fun legacySignatureDigests(info: PackageInfo?): List<String> {
+        val sigs = info?.signatures ?: return emptyList()
+        if (sigs.isEmpty()) return emptyList()
         return sigs.map { sha256(it.toByteArray()) }.sorted()
     }
 
     private fun installedSignerDigests(ctx: Context): List<String> {
-        val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            PackageManager.GET_SIGNING_CERTIFICATES
-        } else {
-            @Suppress("DEPRECATION") PackageManager.GET_SIGNATURES
+        val pm = ctx.packageManager
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            val info = try {
+                pm.getPackageInfo(ctx.packageName, PackageManager.GET_SIGNING_CERTIFICATES)
+            } catch (e: Exception) {
+                null
+            }
+            val modern = info?.let { currentSignerDigests(it) }.orEmpty()
+            if (modern.isNotEmpty()) return modern
         }
-        val info = try {
-            ctx.packageManager.getPackageInfo(ctx.packageName, flags)
+        // Fall back to legacy signatures for the installed package too.
+        @Suppress("DEPRECATION")
+        val legacyInfo = try {
+            pm.getPackageInfo(ctx.packageName, PackageManager.GET_SIGNATURES)
         } catch (e: Exception) {
-            return emptyList()
+            null
         }
-        return signerDigests(info)
+        return legacySignatureDigests(legacyInfo)
     }
 
     private fun sha256(bytes: ByteArray): String =
         MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
+}
+
+/**
+ * Pure signer-set comparison. Both sets must be non-empty and identical;
+ * diagnostics distinguish which side was missing. Never weakens validation
+ * (an empty set is always a failure, never a wildcard).
+ */
+object SignerPolicy {
+
+    fun requireMatch(archiveSigners: List<String>, installedSigners: List<String>) {
+        if (archiveSigners.isEmpty()) throw UpdateException("archive signatures missing")
+        if (installedSigners.isEmpty()) throw UpdateException("installed signatures missing")
+        if (archiveSigners.sorted() != installedSigners.sorted()) throw UpdateException("signer mismatch")
+    }
 }

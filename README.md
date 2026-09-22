@@ -6,7 +6,7 @@ transcripts offline. Login stays in the app's WebView, so there are no
 service credentials embedded in the APK.
 
 - App id: `org.crolab.chromescribe`
-- Version: 1.2.0 (versionCode 3)
+- Version: 1.2.1 (versionCode 4)
 - minSdk 24, target/compileSdk 34
 
 ## Install

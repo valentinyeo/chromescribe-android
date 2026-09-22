@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.2.1: versionCode 4
+
+- Fix self-update signature verification on Android 10 / API 29. The APK
+  archive's current signers are now read from `SigningInfo.getApkContentsSigners`
+  (the signers actually in the APK) rather than rotation-history, and both the
+  archive and the installed package fall back to the legacy `GET_SIGNATURES`
+  retrieval when modern signing info is missing/empty for a file. which is
+  what caused "Update rejected: no signatures" after a successful download and
+  hash check. Validation is not weakened: both signer sets must be non-empty
+  and identical, and the failure diagnostics now distinguish a missing archive
+  signature set from a missing installed one.
+
 ## 1.2.0: versionCode 3
 
 - Lean self-updater (Android app side). Foreground check at most once daily
