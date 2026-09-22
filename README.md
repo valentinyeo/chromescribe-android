@@ -95,10 +95,15 @@ preservation, safe markdown rendering, and the self-update manifest/path/size/
 hash rules and daily schedule. Android lint reports zero issues; `test`, `lint`,
 `assembleDebug` and `assembleRelease` are all green.
 
-The self-update download/verify/install path uses `PackageManager`,
-`ContentProvider` and the system installer, so it is build-verified here and
-device-unverified: it has not been exercised against a live release, nor
-has the "install unknown apps" round-trip been confirmed on a device.
+On 2026-09-22, an Android 10 emulator upgraded through the app from a signed
+older-version test build to the live 1.2.1 release. Verified the update offer,
+no download before consent, authenticated APK download, signature checks,
+unknown-source permission, recovery after process restart, Android install
+confirmation, version replacement, and staged-APK cleanup. The saved transcript
+remained byte-for-byte identical and the queued-link entry survived.
+
+111 Android tests, 14 backend tests, and 17 release-script tests pass. GitHub CI
+also passes. Physical-phone verification remains outstanding.
 
 Android 10 emulator checks confirmed offline reading with Wi-Fi and mobile data
 disabled, saved-library persistence after restart, and durable ACTION_SEND
@@ -118,3 +123,16 @@ Full phone share-sheet and interactive login verification remain pending.
 
 CI (`.github/workflows/build.yml`) runs the same on Java 17 + Android SDK and
 uploads the debug APK. No signing keys are checked in.
+
+## Publish an update
+
+Bump versionCode and versionName, then run on the release machine:
+
+```bash
+python3 scripts/release.py --release-notes notes.txt --publish
+```
+
+The command tests, builds, signs, uploads and reads back the APK, then updates
+the version manifest. Published APKs cannot be replaced with different bytes.
+The signing key stays outside Git. The initial updater APK requires one manual
+installation; later releases are offered inside the app.

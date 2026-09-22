@@ -55,3 +55,11 @@ is behind Cloudflare Access email OTP, so only the WebView can hold the login.
 - Production queue deployed on 2026-09-22. API submission produced transcript
   3359 and summary. Interactive OTP, full phone share-sheet flow, and physical
   device layout remain unverified.
+
+## Updater verification
+
+Release 1.2.1, versionCode 4, passed the full authenticated in-app update flow
+on Android 10, including installation permission and recovery after process
+restart. Cached transcript bytes and the queued-link entry survived. Tests:
+111 Android, 14 backend, 17 publisher. The signing key remains outside Git.
+Use scripts/release.py for publication; never overwrite a versioned APK.

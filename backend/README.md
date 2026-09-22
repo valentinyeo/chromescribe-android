@@ -6,11 +6,11 @@ parent installs the handler into the live worker.
 
 ## Files
 
-- `android-updates.mjs` — `handleAndroidUpdates(request, env)`. Returns a
+- `android-updates.mjs`. `handleAndroidUpdates(request, env)`. Returns a
   `Response` for updater routes, `null` otherwise.
-- `android-updates.test.mjs` — node tests with a fake R2 binding.
-- `../scripts/release.py` — one-command build/sign/verify/upload pipeline.
-- `../scripts/test_release.py` — pure-Python tests for publication ordering.
+- `android-updates.test.mjs`. node tests with a fake R2 binding.
+- `../scripts/release.py`. one-command build/sign/verify/upload pipeline.
+- `../scripts/test_release.py`. pure-Python tests for publication ordering.
 
 ## Routes
 
@@ -47,7 +47,7 @@ required.
 
 ```bash
 curl -sS https://<dashboard-origin>/api/android/latest | head
-curl -sSI https://<dashboard-origin>/api/android/releases/3/app.apk
+curl -sS -D - -o /dev/null https://<dashboard-origin>/api/android/releases/4/app.apk
 ```
 
 ## Tests
@@ -56,3 +56,7 @@ curl -sSI https://<dashboard-origin>/api/android/releases/3/app.apk
 node --test backend/android-updates.test.mjs
 python3 -m unittest scripts.test_release
 ```
+
+Deployed on 2026-09-22. Requests without a Cloudflare Access session redirect
+to login; use a scoped session cookie or service-token headers for CLI checks.
+The main ChromeScribe repository also contains the handler and router integration.
