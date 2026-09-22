@@ -50,6 +50,8 @@ class MainActivity : Activity() {
     private var retrying = false
     private var showingOffline = false
     private var statusPinned = false
+    /** True only between onResume and onPause; gates showing update dialogs. */
+    @Volatile private var resumed = false
     private val pageLoad = PageLoadTracker()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -66,6 +68,9 @@ class MainActivity : Activity() {
             web.loadUrl(Api.BASE)
             handleIntent(intent)
         }
+        // Keep the staged APK until the new version is actually installed;
+        // never delete at launch while an install may be in flight.
+        UpdateChecker.reconcileStaged(this)
         retryOutbox()
     }
 
@@ -77,8 +82,16 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        resumed = true
         retryOutbox()
         updateStatus()
+        resumePendingInstall()
+        maybeForegroundUpdateCheck()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        resumed = false
     }
 
     override fun onStart() {
@@ -185,11 +198,13 @@ class MainActivity : Activity() {
             menu.add(Menu.NONE, 1, 1, getString(R.string.menu_sync))
             menu.add(Menu.NONE, 2, 2, getString(R.string.menu_save))
             menu.add(Menu.NONE, 3, 3, getString(R.string.menu_retry))
+            menu.add(Menu.NONE, 4, 4, getString(R.string.menu_check_updates))
             setOnMenuItemClickListener {
                 when (it.itemId) {
                     1 -> doSync()
                     2 -> saveCurrent()
                     3 -> retryNow()
+                    4 -> manualUpdateCheck()
                 }
                 true
             }
@@ -250,6 +265,9 @@ class MainActivity : Activity() {
                     web.visibility = View.VISIBLE
                     // Successful dashboard page (e.g. after sign-in) is a good retry point.
                     retryOutbox()
+                    // Auth-blocked update checks don't consume the day, so a
+                    // successful sign-in should retry the check immediately.
+                    maybeForegroundUpdateCheck()
                 }
             }
 
@@ -512,6 +530,151 @@ class MainActivity : Activity() {
     private fun setStatus(message: String, pin: Boolean = false) {
         status.text = message
         statusPinned = pin
+    }
+
+    // --- self update --------------------------------------------------------
+
+    /** Foreground check at most once a day; silent on automatic failures. */
+    private fun maybeForegroundUpdateCheck() {
+        if (isFinishing || isDestroyedCompat()) return
+        if (!UpdateChecker.dueForForegroundCheck(this)) return
+        checkForUpdate(manual = false)
+    }
+
+    private fun manualUpdateCheck() {
+        statusPinned = false
+        setStatus(getString(R.string.status_checking_update), pin = false)
+        checkForUpdate(manual = true)
+    }
+
+    /** Phase 1: fetch + validate the manifest only. Never downloads. */
+    private fun checkForUpdate(manual: Boolean) {
+        if (UpdateChecker.isRunning()) {
+            if (manual) setStatus(getString(R.string.status_update_busy), pin = false)
+            return
+        }
+        val app = applicationContext
+        AppExecutors.run("update", onError = {
+            if (manual) ui { setStatus(getString(R.string.status_update_error), pin = true) }
+        }) {
+            val result = UpdateChecker.check(app, manual)
+            ui {
+                when (result) {
+                    is UpdateChecker.Result.Available -> showUpdateDialog(result.manifest)
+                    is UpdateChecker.Result.UpToDate ->
+                        if (manual && result.message != null) setStatus(result.message, pin = false)
+                    is UpdateChecker.Result.Auth ->
+                        if (manual) setStatus(getString(R.string.status_update_sign_in), pin = true)
+                    is UpdateChecker.Result.Failed ->
+                        if (result.manual && result.message.isNotEmpty()) setStatus(result.message, pin = true)
+                    else -> {}
+                }
+            }
+        }
+    }
+
+    private var updateDialogShown = false
+
+    private fun showUpdateDialog(manifest: UpdateManifest) {
+        if (updateDialogShown) return
+        if (isFinishing || isDestroyedCompat() || !resumed) return
+        updateDialogShown = true
+        val notes = manifest.notes.ifBlank { getString(R.string.update_no_notes) }
+        AlertDialog.Builder(this)
+            .setTitle(getString(R.string.update_title, manifest.versionName))
+            .setMessage(notes)
+            .setPositiveButton(R.string.update_now) { _, _ -> beginPrepare(manifest) }
+            .setNegativeButton(R.string.update_later) { _, _ -> updateDialogShown = false }
+            .setOnCancelListener { updateDialogShown = false }
+            .show()
+    }
+
+    /**
+     * Phase 2 (user-triggered): download and verify, then either launch the
+     * installer or request the one-time unknown-sources grant.
+     */
+    private fun beginPrepare(manifest: UpdateManifest) {
+        updateDialogShown = false
+        if (UpdateChecker.isRunning()) {
+            setStatus(getString(R.string.status_update_busy), pin = false)
+            return
+        }
+        setStatus(getString(R.string.status_preparing_update), pin = false)
+        val app = applicationContext
+        AppExecutors.run("update", onError = {
+            ui { setStatus(getString(R.string.status_update_error), pin = true) }
+        }) {
+            val result = UpdateChecker.prepare(app, manifest, manual = true)
+            ui {
+                when (result) {
+                    is UpdateChecker.Result.Prepared -> beginInstall(result.pending)
+                    is UpdateChecker.Result.Auth -> setStatus(getString(R.string.status_update_sign_in), pin = true)
+                    is UpdateChecker.Result.Failed ->
+                        if (result.message.isNotEmpty()) setStatus(result.message, pin = true)
+                    else -> {}
+                }
+            }
+        }
+    }
+
+    /** Persist was done in prepare; now handle the unknown-sources gate. */
+    private fun beginInstall(pending: PendingInstall) {
+        if (ApkInstaller.needsUnknownSourcesSettings(this)) {
+            // Record that we are waiting on the settings round-trip, then go.
+            UpdateChecker.savePending(this, pending.copy(settingsResume = true))
+            setStatus(getString(R.string.status_allow_install), pin = true)
+            try {
+                startActivity(ApkInstaller.unknownSourcesIntent(this))
+            } catch (e: Exception) {
+                // Could not open Settings: clear the resume flag, keep the APK.
+                UpdateChecker.savePending(this, pending.copy(settingsResume = false))
+                setStatus(getString(R.string.status_update_error), pin = true)
+            }
+            return
+        }
+        launchInstaller(pending)
+    }
+
+    /**
+     * On resume: finish an install that was waiting on the settings grant.
+     * Never re-opens in a loop — the resume flag is cleared as soon as we act.
+     */
+    private fun resumePendingInstall() {
+        val pending = UpdateChecker.pending(this) ?: return
+        if (!pending.settingsResume) return
+        if (!ApkInstaller.canInstall(this)) {
+            // Still not granted; wait without prompting again.
+            return
+        }
+        // Clear the resume flag *before* acting so a failed launch never loops.
+        UpdateChecker.savePending(this, pending.copy(settingsResume = false))
+        launchInstaller(pending)
+    }
+
+    /** Re-verify hash+length and archive package/signature/version, then launch. */
+    private fun launchInstaller(pending: PendingInstall) {
+        if (!UpdateChecker.reverifyBeforeInstall(this, pending)) {
+            // Tampered/truncated/old file: discard it and stop.
+            UpdateChecker.clearPending(this)
+            ApkDownloader.clear(this)
+            setStatus(getString(R.string.status_update_rejected), pin = true)
+            return
+        }
+        val apk = ApkDownloader.stagedApk(this)
+        if (apk == null) {
+            UpdateChecker.clearPending(this)
+            setStatus(getString(R.string.status_update_missing), pin = true)
+            return
+        }
+        if (ApkInstaller.install(this, apk)) {
+            // Do NOT delete the APK: Android's installer reads it
+            // asynchronously. Keep pending record + file until a future
+            // foreground confirms the new version is installed.
+            setStatus(getString(R.string.status_install_started), pin = false)
+        } else {
+            UpdateChecker.clearPending(this)
+            setStatus(getString(R.string.status_update_error), pin = true)
+        }
     }
 
     companion object {

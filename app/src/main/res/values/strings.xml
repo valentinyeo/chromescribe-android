@@ -9,6 +9,7 @@
     <string name="menu_sync">Sync latest 20</string>
     <string name="menu_save">Save current</string>
     <string name="menu_retry">Retry shares</string>
+    <string name="menu_check_updates">Check for updates</string>
     <string name="btn_add">Add</string>
     <string name="btn_cancel">Cancel</string>
     <string name="btn_remove">Remove</string>
@@ -39,6 +40,20 @@
         <item quantity="other">%1$d submissions waiting — sends when online</item>
     </plurals>
     <string name="status_offline_library">Offline — showing saved library</string>
+
+    <string name="status_checking_update">Checking for updates…</string>
+    <string name="status_preparing_update">Downloading update…</string>
+    <string name="status_update_busy">Update check already in progress</string>
+    <string name="status_update_error">Update failed — try again later</string>
+    <string name="status_update_sign_in">Sign in to ChromeScribe, then check for updates</string>
+    <string name="status_update_missing">Update file is missing — check again</string>
+    <string name="status_update_rejected">Update failed verification and was discarded</string>
+    <string name="status_allow_install">Allow ChromeScribe to install updates, then return</string>
+    <string name="status_install_started">Confirm the install to update ChromeScribe</string>
+    <string name="update_title">Update ChromeScribe %1$s</string>
+    <string name="update_no_notes">A new version is available.</string>
+    <string name="update_now">Update</string>
+    <string name="update_later">Later</string>
 
     <string name="dialog_add_title">Add YouTube link</string>
     <string name="dialog_remove_message">Remove \u201c%1$s\u201d from offline library?</string>

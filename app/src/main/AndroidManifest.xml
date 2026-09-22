@@ -4,6 +4,8 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Self-update: only used to hand the verified APK to the system installer. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <application
         android:allowBackup="false"
@@ -35,5 +37,13 @@
 
         <activity android:name=".SavedActivity" android:exported="false" />
         <activity android:name=".ReadActivity" android:exported="false" />
+
+        <!-- Serves exactly the verified update APK; not exported, reachable by
+             the installer only via a one-shot read-URI grant. -->
+        <provider
+            android:name=".ApkProvider"
+            android:authorities="org.crolab.chromescribe.apk"
+            android:exported="false"
+            android:grantUriPermissions="true" />
     </application>
 </manifest>

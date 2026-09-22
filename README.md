@@ -2,11 +2,11 @@
 
 A tiny native shell around the existing ChromeScribe mobile website. It lets
 you share a YouTube link from the YouTube app (or paste one) and read
-transcripts offline. Login stays in the app's WebView, so there are **no
-service credentials embedded in the APK**.
+transcripts offline. Login stays in the app's WebView, so there are no
+service credentials embedded in the APK.
 
 - App id: `org.crolab.chromescribe`
-- Version: 1.1.0 (versionCode 2)
+- Version: 1.2.0 (versionCode 3)
 - minSdk 24, target/compileSdk 34
 
 ## Install
@@ -27,26 +27,58 @@ Release builds are unsigned unless a local signing config is supplied.
 
 ## Use
 
-- **Website**: the real dashboard, including the Cloudflare Access email OTP
+- Website: the real dashboard, including the Cloudflare Access email OTP
   login. Sign in once; the session lives in the WebView's own cookie store.
   Only the dashboard origin and `*.cloudflareaccess.com` login pages open
   inside; other links open in your browser. Tapping Website reloads after a
   main-frame network failure.
-- **Saved**: a fully offline list of transcripts whose markdown has actually
+- Saved: a fully offline list of transcripts whose markdown has actually
   been cached on the device. Long-press to remove one.
-- **Add**: paste a YouTube link. Shared links (`ACTION_SEND`) use the same path.
+- Add: paste a YouTube link. Shared links (`ACTION_SEND`) use the same path.
   The link is written to a durable local outbox *before* any network call, then
   sent. If you're offline it stays queued and is retried when you reopen the
   app, reconnect, or return to the dashboard. Queued is not the same as
   transcribed. Retry entries are acknowledged only on an explicit server
   response; malformed responses leave the entry queued.
-- **Overflow (⋮)**
+- Overflow (⋮)
   - *Sync latest 20*: refresh the list and the latest 20 cached transcripts.
     A failed sync keeps the previous readable copies and preserves titles for
     older saved items.
   - *Save current*: cache the transcript currently open in the WebView.
   - *Retry shares*: retry queued submissions now; auth/server errors stay
     visible until retried.
+  - *Check for updates*: check now. A silent check also runs when the app comes
+    to the foreground, at most once a day.
+
+## Self-update
+
+The app can update itself from the same signed-in dashboard, without any
+service credentials in the APK and without a background service or push.
+
+- A check runs on foreground at most once a day, and on demand from
+  *Check for updates*. Automatic failures (offline, server hiccup) are silent;
+  the manual action shows the error. A check that fails because you are signed
+  out does not count for the day, so it retries after you sign in.
+- `GET /api/android/latest` (same origin, WebView's scoped cookie) returns
+  `{versionCode, versionName, minSdk, apkPath, sha256, size, notes}`. `apkPath`
+  must be exactly `/api/android/releases/<versionCode>/app.apk`; integer fields
+  must be plain integers (decimals/exponents/strings/booleans are rejected).
+- You are shown the release notes with *Update* / *Later* before any
+  download: the check only fetches the manifest. The APK is downloaded only
+  after you tap *Update* (over same-origin HTTPS, redirects disabled, a hard
+  20 MiB ceiling enforced while streaming, and a timeout).
+- The APK is verified before anything is offered and again immediately before
+  every install: exact byte length, SHA-256, package name, version code, minSdk,
+  and the signing certificate must match the installed app. Any mismatch is
+  discarded (fail-closed). A failed download never deletes a previously staged
+  good APK. Duplicate concurrent checks/downloads are prevented.
+- Android 8+ asks once for "install unknown apps" permission; the app records
+  the pending install, and re-verifies the APK before resuming after you return
+  from Settings. The staged APK is not deleted when the installer opens
+  (Android reads it asynchronously); it is cleaned up on a later foreground
+  once the new version is actually installed. The system installer always shows
+  its own confirmation. installs are never silent. Existing data is preserved
+  (the update is an in-place package replace).
 
 ## Offline scope
 
@@ -57,9 +89,16 @@ network. Caching is atomic, so a killed process keeps the last good copy.
 
 ## Verification status
 
-Pure-JVM unit tests (62) cover URL validation, durable outbox/retry semantics,
+Pure-JVM unit tests cover URL validation, durable outbox/retry semantics,
 queue-response acknowledgements, server date parsing, cache atomicity/metadata
-preservation and safe markdown rendering. Android lint reports zero issues.
+preservation, safe markdown rendering, and the self-update manifest/path/size/
+hash rules and daily schedule. Android lint reports zero issues; `test`, `lint`,
+`assembleDebug` and `assembleRelease` are all green.
+
+The self-update download/verify/install path uses `PackageManager`,
+`ContentProvider` and the system installer, so it is build-verified here and
+device-unverified: it has not been exercised against a live release, nor
+has the "install unknown apps" round-trip been confirmed on a device.
 
 Android 10 emulator checks confirmed offline reading with Wi-Fi and mobile data
 disabled, saved-library persistence after restart, and durable ACTION_SEND

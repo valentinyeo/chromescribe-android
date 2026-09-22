@@ -1,5 +1,41 @@
 # Changelog
 
+## 1.2.0: versionCode 3
+
+- Lean self-updater (Android app side). Foreground check at most once daily
+  plus manual *Check for updates* in the overflow menu. Automatic/offline
+  failures stay silent; manual errors are visible; an auth-blocked check does
+  not consume the day and retries after sign-in.
+- `GET /api/android/latest` is fetched same-origin with the WebView's scoped
+  cookie (redirects disabled). `apkPath` is restricted to exactly
+  `/api/android/releases/<versionCode>/app.apk`; integer fields reject
+  decimal/exponent/string/boolean coercion.
+- The release-notes dialog with *Update* / *Later* appears before any
+  download: the check only fetches the manifest, and the APK is fetched only
+  after you tap *Update*. APK download is bounded (20 MiB ceiling and declared
+  length enforced while streaming), timed out, and staged atomically; a failed
+  attempt never deletes a previously staged good APK.
+- Verified fail-closed before install and re-verified immediately before every
+  install launch (including the Settings resume): byte length, SHA-256, package
+  name, version code, minSdk, and signer certificates must all match the
+  installed app. Failures discard the file and never advance the daily marker;
+  concurrent checks/downloads are de-duplicated.
+- Install uses a non-exported `ContentProvider` (single fixed `pending.apk`,
+  read-only, one-shot URI grant) plus the system `ACTION_VIEW` installer, so
+  the OS always confirms. The staged APK is not deleted when the installer
+  opens (Android reads it asynchronously); it is cleaned up on a later
+  foreground once the new version is installed. Android 8+
+  `REQUEST_INSTALL_PACKAGES` and the one-time
+  `ACTION_MANAGE_UNKNOWN_APP_SOURCES` grant are handled, and the pending
+  install (persisted only after *Update* is tapped) is resumed after returning
+  from Settings without re-prompting in a loop.
+- Added `REQUEST_INSTALL_PACKAGES`, the `ApkProvider` (not exported), and pure
+  JVM tests for path/size/hash/schedule, strict manifest parsing, the streaming
+  verifier (truncated/oversized/interrupted/hash-mismatch and previous-file
+  preservation) and the never-delete-early cleanup decision.
+- No new runtime dependencies, no background service, no push. Existing data
+  is preserved across updates.
+
 ## 1.1.0: versionCode 2
 
 - Replace the direct OkHttp API client and service-token headers with a

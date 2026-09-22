@@ -77,6 +77,32 @@ object Api {
     }
 
     /**
+     * Open a same-origin, no-redirect HTTPS connection with the WebView's
+     * scoped dashboard cookie attached. Used by the updater so cookie handling
+     * lives in exactly one place. The caller owns connect/disconnect.
+     */
+    internal fun openAuthenticated(ctx: Context, path: String): HttpURLConnection {
+        val base = URL(BASE)
+        val url = URL(base, path)
+        // Scheme, host and effective port must match the dashboard origin
+        // exactly; userinfo (credentials in the URL) is never allowed.
+        if (url.protocol.lowercase() != "https") throw ApiException(0, "insecure update URL")
+        if (url.host.lowercase() != base.host.lowercase()) throw ApiException(0, "cross-origin update URL")
+        if (effectivePort(url.port) != effectivePort(base.port)) throw ApiException(0, "cross-origin update port")
+        if (!url.userInfo.isNullOrEmpty()) throw ApiException(0, "update URL carries credentials")
+        val conn = url.openConnection() as HttpURLConnection
+        conn.instanceFollowRedirects = false
+        conn.connectTimeout = 15_000
+        conn.readTimeout = 30_000
+        conn.setRequestProperty("User-Agent", WebSettings.getDefaultUserAgent(ctx))
+        conn.setRequestProperty("Accept", "application/json")
+        attachCookie(conn)
+        return conn
+    }
+
+    private fun effectivePort(port: Int): Int = if (port == -1) 443 else port
+
+    /**
      * Parse a `/api/queue` envelope. Only an explicit acknowledgement is
      * accepted: queued=true with an id (optionally duplicate), or queued=false
      * with a transcript_id. Anything else is rejected so the durable outbox is
