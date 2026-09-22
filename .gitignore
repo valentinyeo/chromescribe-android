@@ -2,3 +2,6 @@ local.properties
 .gradle/
 build/
 app/build/
+dist/
+__pycache__/
+*.pyc
