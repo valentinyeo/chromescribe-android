@@ -354,10 +354,13 @@ class MainActivity : Activity() {
         if (intent?.action != Intent.ACTION_SEND) return
         if (intent.type?.startsWith("text/") != true) return
         val text = intent.getStringExtra(Intent.EXTRA_TEXT)
-        val url = YouTubeUrl.extract(text)
+        val url = SharedUrl.extract(text)?.url
         if (url == null) {
             showWebsite()
-            setStatus(getString(R.string.status_no_share_link), pin = false)
+            setStatus(getString(
+                if (SharedUrl.firstUrl(text) == null) R.string.status_no_share_link
+                else R.string.status_invalid_link
+            ), pin = false)
         } else {
             submit(url)
         }
@@ -369,7 +372,7 @@ class MainActivity : Activity() {
 
     private fun pasteDialog() {
         val input = EditText(this).apply {
-            hint = "https://youtu.be/..."
+            hint = getString(R.string.dialog_add_hint)
             inputType = InputType.TYPE_TEXT_VARIATION_URI
         }
         AlertDialog.Builder(this)
@@ -377,7 +380,7 @@ class MainActivity : Activity() {
             .setView(input)
             .setPositiveButton(R.string.btn_add) { _, _ ->
                 val typed = input.text.toString()
-                val url = YouTubeUrl.extract(typed) ?: YouTubeUrl.normalize(typed.trim())
+                val url = SharedUrl.extract(typed)?.url
                 if (url == null) setStatus(getString(R.string.status_invalid_link), pin = false)
                 else submit(url)
             }

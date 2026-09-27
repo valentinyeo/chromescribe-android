@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.3.0: versionCode 5
+
+- Accept YouTube, TikTok video and short links, and HTTPS article links through
+  sharing or manual entry. Extract the first URL from caption text.
+- Keep YouTube normalization and reject unsupported links locally, including
+  credentials, IP literals, local hosts and URLs longer than 2048 characters.
+- Update link prompts and add parser coverage for each source and rejected input.
+
 ## 1.2.1: versionCode 4
 
 - Fix self-update signature verification on Android 10 / API 29. The APK

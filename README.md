@@ -1,12 +1,12 @@
 # ChromeScribe for Android
 
 A tiny native shell around the existing ChromeScribe mobile website. It lets
-you share a YouTube link from the YouTube app (or paste one) and read
+you share or paste YouTube, TikTok and HTTPS article links and read
 transcripts offline. Login stays in the app's WebView, so there are no
 service credentials embedded in the APK.
 
 - App id: `org.crolab.chromescribe`
-- Version: 1.2.1 (versionCode 4)
+- Version: 1.3.0 (versionCode 5)
 - minSdk 24, target/compileSdk 34
 
 ## Install
@@ -34,7 +34,7 @@ Release builds are unsigned unless a local signing config is supplied.
   main-frame network failure.
 - Saved: a fully offline list of transcripts whose markdown has actually
   been cached on the device. Long-press to remove one.
-- Add: paste a YouTube link. Shared links (`ACTION_SEND`) use the same path.
+- Add: paste a YouTube, TikTok or HTTPS article link. Shared links (`ACTION_SEND`) use the same path.
   The link is written to a durable local outbox *before* any network call, then
   sent. If you're offline it stays queued and is retried when you reopen the
   app, reconnect, or return to the dashboard. Queued is not the same as

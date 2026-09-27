@@ -15,8 +15,8 @@
     <string name="btn_remove">Remove</string>
 
     <string name="status_ready">Ready</string>
-    <string name="status_no_share_link">No valid YouTube link in that share</string>
-    <string name="status_invalid_link">Not a valid YouTube link</string>
+    <string name="status_no_share_link">No link found in that share</string>
+    <string name="status_invalid_link">Not a supported link</string>
     <string name="status_saved_offline">Saved offline — sends when ChromeScribe is online</string>
     <string name="status_save_failed">Could not save submission: %1$s</string>
     <string name="status_outbox_unreadable">Outbox unreadable: %1$s</string>
@@ -55,7 +55,8 @@
     <string name="update_now">Update</string>
     <string name="update_later">Later</string>
 
-    <string name="dialog_add_title">Add YouTube link</string>
+    <string name="dialog_add_hint">YouTube, TikTok or HTTPS article link</string>
+    <string name="dialog_add_title">Add link</string>
     <string name="dialog_remove_message">Remove \u201c%1$s\u201d from offline library?</string>
     <string name="toast_cannot_open">Cannot open link</string>
     <string name="toast_not_saved">Not saved offline</string>
