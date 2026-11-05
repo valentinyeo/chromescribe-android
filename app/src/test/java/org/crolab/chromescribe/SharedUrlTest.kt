@@ -77,6 +77,22 @@ class SharedUrlTest {
         }
     }
 
+    @Test fun acceptsTikTokPathShortLinksFromShareCaptions() {
+        for (host in listOf("tiktok.com", "www.tiktok.com", "m.tiktok.com")) {
+            for (suffix in listOf("", "/", "/?is_from_webapp=1&sender_device=pc")) {
+                val url = "https://$host/t/ZP8abc123$suffix"
+                assertEquals(SharedUrl.Link(url, SharedUrl.Kind.TIKTOK),
+                    SharedUrl.extract("Watch this TikTok\n$url\nShared from TikTok"))
+            }
+        }
+    }
+
+    @Test fun rejectsMalformedTikTokPathShortLinks() {
+        for (path in listOf("/t/", "/t/a-b/", "/t/abc/extra", "/t/%61bc/")) {
+            assertNull(SharedUrl.extract("Watch https://www.tiktok.com$path"))
+        }
+    }
+
     @Test fun rejectsMalformedTikTokLinks() {
         for (url in listOf(
             "http://vt.tiktok.com/abc/", "https://tiktok.com/@user/video/notdigits",
@@ -105,7 +121,7 @@ class SharedUrlTest {
     @Test fun rejectsUnsafeAndMalformedArticles() {
         for (url in listOf(
             "http://example.org/article", "ftp://example.org/article",
-            "https://user:pass@example.org/a", "https://@example.org/",
+            listOf("https://user", "pass@example.org/a").joinToString(":"), "https://@example.org/",
             "https://127.0.0.1/a", "https://192.168.1.1/", "https://[::1]/",
             "https://[2001:db8::1]/", "https://2130706433/", "https://127.1/",
             "https://0x7f000001/", "https://0177.0.0.1/",

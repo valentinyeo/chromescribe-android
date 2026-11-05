@@ -36,7 +36,8 @@ Release builds are unsigned unless a local signing config is supplied.
   been cached on the device. Long-press to remove one.
 - Add: paste a YouTube, TikTok or HTTPS article link. Shared links (`ACTION_SEND`) use the same path.
   The link is written to a durable local outbox *before* any network call, then
-  sent. If you're offline it stays queued and is retried when you reopen the
+  sent. TikTok `/t/` short links are accepted alongside `vm.tiktok.com` and
+  `vt.tiktok.com` links. If you're offline it stays queued and is retried when you reopen the
   app, reconnect, or return to the dashboard. Queued is not the same as
   transcribed. Retry entries are acknowledged only on an explicit server
   response; malformed responses leave the entry queued.
