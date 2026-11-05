@@ -50,7 +50,7 @@ object SharedUrl {
             return youtube(youtubeUri, host)?.let { Link(it, Kind.YOUTUBE) }
         }
         if (host in setOf("tiktok.com", "www.tiktok.com", "m.tiktok.com")) {
-            if (!Regex("/@[^/]+/video/[0-9]+/?").matches(uri.rawPath.orEmpty())) return null
+            if (!Regex("/(?:@[^/]+/video/[0-9]+|t/[A-Za-z0-9]+)/?").matches(uri.rawPath.orEmpty())) return null
             return Link(trimmed, Kind.TIKTOK)
         }
         if (host == "vm.tiktok.com" || host == "vt.tiktok.com") {
