@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.3.1: versionCode 6
+
+- IGSH-1184 Chromescribe Android: TikTok shares never reach the queue — accept
+  TikTok `/t/` short links shared from the phone.
+
 ## 1.3.0: versionCode 5
 
 - Accept YouTube, TikTok video and short links, and HTTPS article links through
